@@ -1,0 +1,4 @@
+sensor\TestRunner.class
+server\TestRunner.class
+gateway\TestRunner.class
+server\ServerTest.class

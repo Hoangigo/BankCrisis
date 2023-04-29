@@ -11,9 +11,9 @@ import java.net.InetAddress;
  */
 public class Main {
     public static void main(String[] args) throws IOException {
-        //if (args.length != )
-            //throw new Error("Gateway needs exactly 7 arguments!");
-        int handlerCount = 3;
+        //if (args.length != 7)
+          //  throw new Error("Gateway needs exactly 7 arguments!");
+        int handlerCount = args.length/2;
         BankHandler[] handlers = new BankHandler[handlerCount];
         DatagramSocket receiver = new DatagramSocket();
         int bankID = 1;

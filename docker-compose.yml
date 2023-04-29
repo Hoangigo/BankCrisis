@@ -5,7 +5,7 @@ services:
       context: .
       dockerfile: src/main/java/borse/Dockerfile
     container_name: 'borse1'
-    entrypoint: ["java", "-jar", "app.jar","bank1","1234","bank2","1235","bank3","1236",]
+    entrypoint: ["java", "-jar", "app.jar","bank1","1234","bank2","1235","bank3","1236","borse1"]
   bank1:
     build:
       context: .
