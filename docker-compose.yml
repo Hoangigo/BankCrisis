@@ -1,11 +1,17 @@
 version: '3'
 services:
-  borse:
+  borse3:
     build:
       context: .
       dockerfile: src/main/java/borse/Dockerfile
-    container_name: 'borse1'
-    entrypoint: ["java", "-jar", "app.jar","bank1","1234","bank2","1235","bank3","1236","borse1"]
+    container_name: 'borse3'
+    entrypoint: ["java", "-jar", "app.jar","bank1","1234","bank2","1235","bank3","1236","borse3"]
+  borse2:
+    build:
+      context: .
+      dockerfile: src/main/java/borse/Dockerfile
+    container_name: 'borse2'
+    entrypoint: [ "java", "-jar", "app.jar","bank1","1234","bank2","1235","bank3","1236","borse2" ]
   bank1:
     build:
       context: .

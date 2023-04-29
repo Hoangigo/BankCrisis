@@ -16,17 +16,14 @@ public class Main {
         int handlerCount = args.length/2;
         BankHandler[] handlers = new BankHandler[handlerCount];
         DatagramSocket receiver = new DatagramSocket();
-        int bankID = 1;
-        handlers[0]= new BankHandler(InetAddress.getByName("bank" + bankID++),
-            1234,
-            receiver);
-        handlers[1]= new BankHandler(InetAddress.getByName("bank" + bankID++),
-            1235,
-            receiver);
-        handlers[2]= new BankHandler(InetAddress.getByName("bank" + bankID++),
-            1236,
-            receiver);
-        Borse borse= new Borse("borse1",handlers);
+        int pos =0;
+        for(int i = 0;i< args.length-2;i+=2){
+            handlers[pos]= new BankHandler(InetAddress.getByName(args[i]),Integer.parseInt(args[i+1]),
+                receiver);
+            pos++;
+        }
+
+        Borse borse= new Borse(args[args.length-1],handlers);
         borse.startPullingData(3000);
     }
 }
