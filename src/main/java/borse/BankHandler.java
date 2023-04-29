@@ -20,7 +20,7 @@ public class BankHandler {
      */
     private final InetAddress address;
     /**
-     * Port of the sensor.
+     * Port of the bank.
      */
     private final int port;
     /**
