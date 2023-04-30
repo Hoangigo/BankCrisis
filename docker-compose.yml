@@ -17,16 +17,38 @@ services:
       context: .
       dockerfile: src/main/java/bank/Dockerfile
     container_name: 'bank1'
-    entrypoint: ["java", "-jar", "app.jar", "bank1","1234"]
+    expose:
+      - "8080"
+    ports:
+      - "8080:8080"
+    entrypoint: ["java", "-jar", "app.jar", "bank1","1234","8080"]
   bank2:
     build:
       context: .
       dockerfile: src/main/java/bank/Dockerfile
     container_name: 'bank2'
-    entrypoint: [ "java", "-jar", "app.jar","bank2","1235"]
+    expose:
+      - "8081"
+    ports:
+      - "8081:8081"
+    entrypoint: [ "java", "-jar", "app.jar","bank2","1235","8081"]
   bank3:
     build:
       context: .
       dockerfile: src/main/java/bank/Dockerfile
     container_name: 'bank3'
-    entrypoint: [ "java", "-jar", "app.jar","bank3","1236"]
+    expose:
+      - "8082"
+    ports:
+      - "8082:8082"
+    entrypoint: [ "java", "-jar", "app.jar","bank3","1236","8082"]
+  client:
+    build:
+      context: .
+      dockerfile: src/main/java/client/Dockerfile
+    container_name: 'client'
+    depends_on:
+      - "bank1"
+      - "bank2"
+      - "bank3"
+    entrypoint: [ "java", "-jar", "app.jar","bank1","bank2","bank3","8080","8081","8082"]

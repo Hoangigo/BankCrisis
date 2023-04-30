@@ -5,6 +5,7 @@ import borse.Message;
 import connection.Establisher;
 import java.io.IOException;
 import java.net.InetAddress;
+import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.HashMap;
 import udphandler.UDPHandler;
@@ -14,44 +15,29 @@ import udphandler.UDPMessage;
  * Sensor which generates random data
  * and communicates using a DatagramSocket.
  */
-public class Bank implements Establisher<Socket> {
+public class Bank extends Thread   {
     private final UDPHandler handler;
-    /**
-     * Name of this bank.
-     */
     private final String bankName;
     private int currentValue;
-    private final int HTTP_DEFAULT_PORT = 8080;
+    private int HTTP_DEFAULT_PORT;
     private int port;
 
-    public HashMap<Code, Message> getSavedMessage() {
-        return savedMessage;
-    }
+    private ClientHandler clientHandler;
+    private final ServerSocket serverSocket;
 
     private HashMap<Code, Message> savedMessage;
-    /**
-     * TCP-Socket for communication between bank and browser.
-     */
-    //private final Socket connection;
+    private boolean running;
 
-    /**
-     * Reads from the input stream of the Socket.
-     */
-    //private final BufferedReader reader;
 
-    /**
-     * Writes to the output stream of the Socket.
-     */
-    //private final OutputStream writer;
-
-    public Bank(String name, int port,String serverName) throws IOException {
-        //this.connection = establishConnection(serverName, HTTP_DEFAULT_PORT);
-        //this.reader = new BufferedReader(new InputStreamReader(this.connection.getInputStream()));
-        //this.writer = this.connection.getOutputStream();
+    public Bank(String name, int port, int httpPort) throws IOException {
+        this.HTTP_DEFAULT_PORT= httpPort;
         this.bankName = name;
         this.currentValue = 0;
         savedMessage = new HashMap<>();
         this.port = port;
+        this.running = true;
+        serverSocket = new ServerSocket(HTTP_DEFAULT_PORT);
+        System.out.println("HTTP_DEFAULT_PORT: "+ HTTP_DEFAULT_PORT);
         this.handler = new UDPHandler(this) {
             @Override
             public UDPMessage getMessage() {
@@ -60,12 +46,26 @@ public class Bank implements Establisher<Socket> {
             }
         };
     }
+    @Override
+    public void run() {
+        //handler.start();
+        try {
+            while (running) {
+                Socket client = serverSocket.accept();
+                this.clientHandler = new ClientHandler(client, savedMessage, currentValue);
+                this.clientHandler.start();
+            }
+        } catch (Exception ignored) {
+        }
+    }
+    public HashMap<Code, Message> getSavedMessage() {
+        return savedMessage;
+    }
+
     public int getPort(){
        return this.port;
     }
-    public void start() {
-        handler.start();
-    }
+
     public void addSavedMessage(Code code, int quantity, int price){
         Message msg = savedMessage.get(code);
         if (msg == null) {
@@ -78,6 +78,7 @@ public class Bank implements Establisher<Socket> {
             msg.setPrice(newPrice);
         }
     }
+    /*
     @Override
     public Socket establishConnection(String host, int port) {
         Socket tmp = null;
@@ -89,21 +90,8 @@ public class Bank implements Establisher<Socket> {
             }
         }
         return tmp;
-    }
-    /*
-    /**
-     * Sends a Post request to the server
-     * that contains the sensor data.
-     * @param message Sensor data.
-     */
-    private void sendPostRequest(String message) throws IOException {
-        String postRequest = "POST / HTTP/1.1\r\n"
-            + "Host: bank\r\n"
-            + "Content-Type: text/plain\r\n"
-            + "Content-Length: " + message.length()+ "\r\n"
-            +"\r\n" + message;
-        //writer.write(postRequest.getBytes());
-    }
+    }*/
+
     public int getCurrentValue() {
         return currentValue;
     }
@@ -112,13 +100,5 @@ public class Bank implements Establisher<Socket> {
     }
 
 
-    /**
-     * Prints the server response to standard output.
-     */
-    /*
-    private void getServerResponse() throws IOException {
-        String line;
-        while (!(line = reader.readLine()).equals(""))
-            System.out.println(line);
-    }*/
+
 }
