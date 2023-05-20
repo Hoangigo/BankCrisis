@@ -37,10 +37,14 @@ public abstract class UDPHandler extends Thread {
         while (running) {
             buffer = new byte[BUFFER_SIZE];
             request = new DatagramPacket(buffer,BUFFER_SIZE);
+
             try {
                 receiver.receive(request);
                 receiver.send(evaluateData(request.getData(), request.getLength(), request.getAddress(), request.getPort()));
-            } catch (Exception ignored) {}
+            } catch (Exception ignored) {
+                System.out.println("not be able to catch message ");
+                System.out.println(ignored.getMessage());
+            }
         }
         receiver.close();
     }
@@ -53,13 +57,14 @@ public abstract class UDPHandler extends Thread {
         String kurzel = requestArray[1];
         int price = Integer.parseInt(requestArray[2]);
         this.bank.addSavedMessage(Code.valueOf(kurzel),quantity,price);
+        System.out.println(this.bank.getSavedMessage());
         int newValue = calculate(this.bank.getSavedMessage());
         int difference = newValue - this.bank.getCurrentValue();
         if(difference >0 ){
             System.out.println("The Bank receives "+ difference+"$ more than last time");
         }
         else{
-            System.out.println("The Bank loses "+ difference+"$ than last time");
+            System.out.println("The Bank loses "+ (-difference)+"$ than last time");
         }
         this.bank.setCurrentValue(newValue);
 

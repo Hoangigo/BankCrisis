@@ -37,7 +37,6 @@ public class Bank extends Thread   {
         this.port = port;
         this.running = true;
         serverSocket = new ServerSocket(HTTP_DEFAULT_PORT);
-        System.out.println("HTTP_DEFAULT_PORT: "+ HTTP_DEFAULT_PORT);
         this.handler = new UDPHandler(this) {
             @Override
             public UDPMessage getMessage() {
@@ -48,7 +47,7 @@ public class Bank extends Thread   {
     }
     @Override
     public void run() {
-        //handler.start();
+        handler.start();
         try {
             while (running) {
                 Socket client = serverSocket.accept();
@@ -73,9 +72,10 @@ public class Bank extends Thread   {
             savedMessage.put(code, msg);
         } else {
             int newQuantity = msg.getQuantity() + quantity;
-            int newPrice = price; // or you could calculate a new average price here
+            int newPrice = price;
             msg.setQuantity(newQuantity);
             msg.setPrice(newPrice);
+            savedMessage.replace(code, msg);
         }
     }
     /*

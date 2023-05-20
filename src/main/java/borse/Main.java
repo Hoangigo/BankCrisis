@@ -11,8 +11,7 @@ import java.net.InetAddress;
  */
 public class Main {
     public static void main(String[] args) throws IOException {
-        //if (args.length != 7)
-          //  throw new Error("Gateway needs exactly 7 arguments!");
+
         int handlerCount = args.length/2;
         BankHandler[] handlers = new BankHandler[handlerCount];
         DatagramSocket receiver = new DatagramSocket();
@@ -24,6 +23,6 @@ public class Main {
         }
 
         Borse borse= new Borse(args[args.length-1],handlers);
-        borse.startPullingData(3000);
+        borse.startPullingData(5000);
     }
 }

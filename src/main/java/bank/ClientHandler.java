@@ -12,6 +12,8 @@ public class ClientHandler extends Thread {
   public static final String REQUEST_CANNOT_BE_PROCESSED = "500 Request cannot be processed.";
   public static final String BAD_REQUEST = "400 Request is missing Content-Length or Content-Type is not text/plain";
   public static final String DEFAULT_ANSWER = "200 OK";
+  public static final String DENY_ANSWER = "402 Not Allow";
+
   public static final int CONTENT_LENGTH_BEGIN_INDEX = 16;
   private static final int CONTENT_TYPE_BEGIN_INDEX = 14;
   private static final int MONEY_BEGIN_INDEX = 7;
@@ -23,19 +25,15 @@ public class ClientHandler extends Thread {
   private int contentLength;
   private String contentType;
   private String statusMessage;
+
   private HashMap<Code, Message> savedMessage;
 
-  private int moneyBeingRequest;
-  private Code codeBeingRequest;
-  private int amountOfCodeBeingRequest;
   private int currentValue;
   private final BufferedReader in;
   private final OutputStream out;
   private boolean checkRequest ;
   public ClientHandler(Socket clientConnection,HashMap<Code, Message> savedMessage, int currentValue)
       throws IOException {
-    //TODO why ???
-    System.out.println("Connection port should be 8080 "+clientConnection.getPort());
     this.savedMessage= savedMessage;
     connection = clientConnection;
     reader = new BufferedReader(new InputStreamReader(clientConnection.getInputStream()));
@@ -50,19 +48,85 @@ public class ClientHandler extends Thread {
     try {
       String bodyContent;
       while (!connection.isClosed()) {
-        System.out.println("Parse Header");
         parseHeader();
-
         bodyContent = getBody();
-        System.out.println("get Body: "+ bodyContent);
-        System.out.println(bodyContent);
-        if (bodyContent == null)
+        if (bodyContent == null|| bodyContent=="")
           break;
-        //sharedContainer.add(bodyContent);
-        sendAnswer();
+        else{
+          String transactionType= "";
+          int money = 0;
+          Code code = null;
+          int quantity =0;
+          String[] parameters = bodyContent.split("&");
+          for (String parameter : parameters) {
+            String[] keyValue = parameter.split("=");
+            if(keyValue[0].equals("transactionType")&& keyValue.length==2){
+              transactionType = keyValue[1];
+            }
+            else if(keyValue[0].equals("money") && keyValue.length==2 ){
+              money = getMoney(keyValue[1]);
+            }
+            else if(keyValue[0].equals("code") && keyValue.length==2){
+              code = getCode(keyValue[1]);
+            }
+            else if(keyValue[0].equals("quantity")  && keyValue.length==2 ){
+              quantity = getQuantity(keyValue[1]);
+            }
+
+          }
+          evaluateRequest(transactionType,money,code,quantity);
+          sendAnswer();
+
+        }
       }
     } catch (IOException ignored) {}
   }
+
+  private void evaluateRequest(String transactionType, int money, Code code, int quantity) {
+    if(transactionType == ""|| transactionType == null) return;
+    else if(transactionType.equals("sendMoney") ){
+      System.out.println("Send money");
+      this.currentValue+= money;
+      System.out.println("New value of Bank: "+ this.currentValue);
+      this.statusMessage= DEFAULT_ANSWER;
+
+    }
+    else if(transactionType.equals("lendMoney")){
+      System.out.println("Lend money");
+      if(currentValue < money){
+        System.out.println("Exceed amount of money ");
+        this.statusMessage= DENY_ANSWER;
+      }
+      else {
+        this.statusMessage= DEFAULT_ANSWER;
+        this.currentValue-= money;
+        System.out.println("New value of Bank: "+ this.currentValue);
+
+      }
+    }
+    else if(transactionType.equals("buyStock")){
+      System.out.println(savedMessage);
+      Message message = savedMessage.get(code);
+      if(message == null){
+        System.out.println("No Stock code found");
+        this.statusMessage= DENY_ANSWER;
+      }
+      else{
+        if(message.getQuantity()< quantity){
+          System.out.println("Not enough Stock with this code");
+          this.statusMessage= DENY_ANSWER;
+        }
+        else{
+          message.setQuantity(message.getQuantity()-quantity);
+          System.out.println("Transaction successful");
+          this.statusMessage= DEFAULT_ANSWER;
+        }
+      }
+
+
+    }
+  }
+
   private void parseHeader() throws IOException {
     statusMessage = DEFAULT_ANSWER;
     contentLength = -1;
@@ -71,36 +135,22 @@ public class ClientHandler extends Thread {
     if (!requestLineIsValid(reader.readLine())) {
       contentLength = 0;
       statusMessage = REQUEST_CANNOT_BE_PROCESSED;
-      System.out.println("FALSE");
-      sendAnswer();
       return;
     }
     if(this.checkRequest) {
-      //sendAnswer();
-      System.out.println("check Rquest");
       setCheckRequest(false);
       return;
     }
     data = reader.readLine();
     while (data != null && !data.equals("")) {
-      if (data.startsWith("Content-Length: "))
+      if (data.startsWith("Content-Length: ")) {
         contentLength = getContentLength(data);
-      if (data.startsWith("Content-Type: "))
+      }
+      else if (data.startsWith("Content-Type: ")) {
         contentType = getContentType(data);
-      if (data.startsWith("money: ")) {
-        moneyBeingRequest = getMoney(data);
-      }
-      if (data.startsWith("code: ")) {
-        codeBeingRequest = getCode(data);
-
-      }
-      if(data.startsWith("quantity: ")) {
-        amountOfCodeBeingRequest = getQuantity(data);
-        System.out.println("Amount: "+amountOfCodeBeingRequest);
 
       }
       data = reader.readLine();
-      System.out.println(data);
     }
     if (requestMissesProperHeaderFields()) {
       contentLength = 0;
@@ -109,23 +159,20 @@ public class ClientHandler extends Thread {
     }
   }
   private int getMoney(String data){
-    System.out.println(data);
     try {
-      return Integer.parseInt(data.substring(MONEY_BEGIN_INDEX));
+      return Integer.parseInt(data);
     } catch (Exception ignored) {}
     return 0;
   }
   private Code getCode(String data){
-    System.out.println(data);
     try {
-      return Code.valueOf(data.substring(CODE_BEGIN_INDEX));
+      return Code.valueOf(data);
     } catch (Exception ignored) {}
     return null;
   }
   private int getQuantity(String data){
-    System.out.println(data);
     try {
-      return Integer.parseInt(data.substring(QUANTITY_BEGIN_INDEX));
+      return Integer.parseInt(data);
     } catch (Exception ignored) {}
     return 0;
   }
@@ -142,9 +189,10 @@ public class ClientHandler extends Thread {
   }
   private void sendAnswer() throws IOException {
     String http = "HTTP/1.1 " + statusMessage + "\r\n"
-        + "Bank: Commerzbank\r\n"
+        + "Bank: bank1\r\n"
         + "Content-Type: text/plain\r\n"
         + "Content-Length: 0\r\n\r\n";
+    System.out.println(http);
     writer.write(http.getBytes());
   }
   private String getContentType(String data) {
@@ -160,13 +208,13 @@ public class ClientHandler extends Thread {
     return -1;
   }
   private boolean requestLineIsValid(String data) throws IOException {
+
     if (data == null)
       return false;
     String[] tokens = data.split(" ");
     if (tokens.length != 3)
       return false;
-    if(tokens[0].equals("GET")&& tokens[1].equals("/getData") && tokens[2].equals("HTTP/1.1")){
-      System.out.println("Get Request received");
+    if(tokens[0].equals("GET")&& tokens[1].equals("/getData?") && tokens[2].equals("HTTP/1.1")){
       statusMessage = DEFAULT_ANSWER;
       String http = "HTTP/1.1 " + statusMessage + "\r\n"
           + "Server: bank9000\r\n"
@@ -175,19 +223,13 @@ public class ClientHandler extends Thread {
           + currentValue+ " $";
       out.write(http.getBytes());
       out.flush();
-      String leftOver;
-
-      while (!(leftOver = in.readLine()).equals("")) {
-        System.out.println(leftOver);
-      }
       this.checkRequest= true;
-
       return true;
     }
     return tokens[0].equals("POST") && tokens[1].equals("/") && tokens[2].equals("HTTP/1.1");
   }
   private boolean requestMissesProperHeaderFields() {
-    return contentLength == -1 || !contentType.equals("text/plain");
+    return contentLength == -1 || !contentType.equals("application/x-www-form-urlencoded");
   }
   public boolean isCheckRequest() {
     return checkRequest;

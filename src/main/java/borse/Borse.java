@@ -54,17 +54,7 @@ public class Borse  {
             for (BankHandler handler : handlers) {
                 if (handler != null) {
                     String msg = new Message().toString();
-                    long startTime = System.nanoTime();
                     handler.sendMessage(msg);
-                    if(!handler.isFirstTime()){
-                        handler.getMessage();
-                        long endTime = System.nanoTime();
-                        long rtt = (endTime - startTime) / 1000000;
-                        System.out.println("RTT: "+ rtt+" ms");
-                        handler.setFirstTime(true);
-                    }
-                    //sendPostRequest(handler.getMessage());
-                    //getServerResponse();
                 }
             }
         } catch (IOException ignored) {}
