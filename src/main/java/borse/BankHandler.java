@@ -28,13 +28,7 @@ public class BankHandler {
      */
     private final DatagramSocket receiver;
 
-    public boolean isFirstTime() {
-        return firstTime;
-    }
 
-    public void setFirstTime(boolean firstTime) {
-        this.firstTime = firstTime;
-    }
 
     /**
      * Constructor of the SensorHandler class.
@@ -42,12 +36,10 @@ public class BankHandler {
      * @param sensorAddress Address of the sensor.
      * @param sensorPort Port of the sensor.
      */
-    boolean firstTime;
     public BankHandler(InetAddress sensorAddress, int sensorPort, DatagramSocket receiver) {
         address = sensorAddress;
         port = sensorPort;
         this.receiver = receiver;
-        this.firstTime =false;
     }
 
     /**

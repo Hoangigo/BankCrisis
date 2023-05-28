@@ -12,6 +12,25 @@ services:
       dockerfile: src/main/java/borse/Dockerfile
     container_name: 'borse2'
     entrypoint: [ "java", "-jar", "app.jar","bank1","1234","bank2","1235","bank3","1236","borse2" ]
+  borse3:
+    build:
+      context: .
+      dockerfile: src/main/java/borse/Dockerfile
+    container_name: 'borse3'
+    entrypoint: [ "java", "-jar", "app.jar","bank1","1234","bank2","1235","bank3","1236","bank4","1237","bank5","1238","borse3" ]
+  borse4:
+    build:
+      context: .
+      dockerfile: src/main/java/borse/Dockerfile
+    container_name: 'borse4'
+    entrypoint: [ "java", "-jar", "app.jar","bank1","1234","bank2","1235","bank3","1236","bank6","1239","borse4" ]
+  borse5:
+    build:
+      context: .
+      dockerfile: src/main/java/borse/Dockerfile
+    container_name: 'borse5'
+    entrypoint: [ "java", "-jar", "app.jar","bank1","1234","bank2","1235","bank3","1236","borse5" ]
+
 
   bank1:
     build:
@@ -43,3 +62,34 @@ services:
     ports:
       - "8082:8082"
     entrypoint: [ "java", "-jar", "app.jar","bank3","1236","8082"]
+  bank4:
+    build:
+      context: .
+      dockerfile: src/main/java/bank/Dockerfile
+    container_name: 'bank4'
+    expose:
+      - "8083"
+    ports:
+      - "8083:8083"
+    entrypoint: [ "java", "-jar", "app.jar","bank4","1237","8083" ]
+  bank5:
+    build:
+      context: .
+      dockerfile: src/main/java/bank/Dockerfile
+    container_name: 'bank5'
+    expose:
+      - "8084"
+    ports:
+      - "8084:8084"
+    entrypoint: [ "java", "-jar", "app.jar","bank5","1238","8084" ]
+  bank6:
+    build:
+      context: .
+      dockerfile: src/main/java/bank/Dockerfile
+    container_name: 'bank6'
+    expose:
+      - "8085"
+    ports:
+      - "8085:8085"
+    entrypoint: [ "java", "-jar", "app.jar","bank3","1239","8085" ]
+

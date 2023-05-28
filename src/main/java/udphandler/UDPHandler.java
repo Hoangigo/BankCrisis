@@ -7,6 +7,7 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.SocketException;
+import java.net.SocketTimeoutException;
 import java.util.HashMap;
 
 public abstract class UDPHandler extends Thread {
@@ -18,10 +19,15 @@ public abstract class UDPHandler extends Thread {
     private boolean running;
 
     private Bank bank;
+    private int sentPackets;
+    private int lostPackets;
     public UDPHandler(Bank bank) throws SocketException {
         this.bank= bank;
         this.receiver = new DatagramSocket(bank.getPort());
+        this.receiver.setSoTimeout(1000);
         this.running = true;
+        this.sentPackets = 0;
+        this.lostPackets = 0;
     }
 
     public void stopHandler() {
@@ -41,10 +47,20 @@ public abstract class UDPHandler extends Thread {
             try {
                 receiver.receive(request);
                 receiver.send(evaluateData(request.getData(), request.getLength(), request.getAddress(), request.getPort()));
-            } catch (Exception ignored) {
+                double packetLossRate = (double) lostPackets / sentPackets * 100;
+                System.out.println("Packet loss rate: " + packetLossRate + "%");
+
+            }
+            catch (SocketTimeoutException e) {
+                System.out.println("UDP packet not arrived: " + e.getMessage());
+                lostPackets++;
+            }catch (Exception ignored) {
                 System.out.println("not be able to catch message ");
                 System.out.println(ignored.getMessage());
+                lostPackets++;
             }
+            sentPackets++;
+
         }
         receiver.close();
     }
@@ -53,27 +69,25 @@ public abstract class UDPHandler extends Thread {
         String decodedRequest = new String(packetBytes,0,length);
         String[] requestArray = decodedRequest.split(",");
         int quantity = Integer.parseInt(requestArray[0]);
-        //if(quantity!= 50) return error(address,port);
         String kurzel = requestArray[1];
         int price = Integer.parseInt(requestArray[2]);
         this.bank.addSavedMessage(Code.valueOf(kurzel),quantity,price);
-        System.out.println(this.bank.getSavedMessage());
+        int oldValue = this.bank.getCurrentValue();
         int newValue = calculate(this.bank.getSavedMessage());
-        int difference = newValue - this.bank.getCurrentValue();
+        this.bank.setCurrentValue(newValue);
+        int difference = newValue - oldValue;
         if(difference >0 ){
             System.out.println("The Bank receives "+ difference+"$ more than last time");
         }
         else{
             System.out.println("The Bank loses "+ (-difference)+"$ than last time");
         }
-        this.bank.setCurrentValue(newValue);
-
         return reply(address, port);
 
 
     }
     private int calculate(HashMap<Code, Message> data){
-        int sum = 0;
+        int sum = this.bank.getCurrentValue();
         for (Message value : data.values()) {
             sum += value.getQuantity() * value.getPrice();
         }

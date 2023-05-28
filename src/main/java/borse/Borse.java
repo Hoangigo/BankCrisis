@@ -24,6 +24,7 @@ public class Borse  {
     private final Timer mainTimer;
     private final String borseName;
     public Borse(String borseName, BankHandler[] handlers) throws IOException {
+        System.out.println(borseName + " starts");
         this.mainTimer = new Timer();
         this.handlers = handlers;
         this.borseName= borseName;
@@ -42,13 +43,6 @@ public class Borse  {
             }
         }, 0, delay);
     }
-
-    /**
-     * Sends a message to each sensor
-     * via it's assigned handler.
-     * @param msg message to be sent to the sensors.
-     * Usually "pull" to get data. "stop" stops the sensor.
-     */
     public void broadcastToBanks() {
         try {
             for (BankHandler handler : handlers) {

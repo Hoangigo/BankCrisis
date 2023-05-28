@@ -24,7 +24,6 @@ public class Bank extends Thread   {
 
     private ClientHandler clientHandler;
     private final ServerSocket serverSocket;
-
     private HashMap<Code, Message> savedMessage;
     private boolean running;
 
@@ -51,7 +50,7 @@ public class Bank extends Thread   {
         try {
             while (running) {
                 Socket client = serverSocket.accept();
-                this.clientHandler = new ClientHandler(client, savedMessage, currentValue);
+                this.clientHandler = new ClientHandler(client, this);
                 this.clientHandler.start();
             }
         } catch (Exception ignored) {

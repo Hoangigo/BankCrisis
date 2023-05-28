@@ -4,11 +4,6 @@ import java.io.IOException;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 
-/**
- * Serves as the entrypoint to the Gateway.
- * Parses the arguments passed in the docker-compose file
- * into the corresponding addresses and ports.
- */
 public class Main {
     public static void main(String[] args) throws IOException {
 
@@ -23,6 +18,6 @@ public class Main {
         }
 
         Borse borse= new Borse(args[args.length-1],handlers);
-        borse.startPullingData(5000);
+        borse.startPullingData(3000);
     }
 }
