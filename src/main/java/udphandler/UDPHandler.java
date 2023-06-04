@@ -24,7 +24,6 @@ public abstract class UDPHandler extends Thread {
     public UDPHandler(Bank bank) throws SocketException {
         this.bank= bank;
         this.receiver = new DatagramSocket(bank.getPort());
-        this.receiver.setSoTimeout(1000);
         this.running = true;
         this.sentPackets = 0;
         this.lostPackets = 0;
@@ -43,12 +42,15 @@ public abstract class UDPHandler extends Thread {
         while (running) {
             buffer = new byte[BUFFER_SIZE];
             request = new DatagramPacket(buffer,BUFFER_SIZE);
-
+            if(bank.isBankrupt()) running = false;
             try {
                 receiver.receive(request);
                 receiver.send(evaluateData(request.getData(), request.getLength(), request.getAddress(), request.getPort()));
-                double packetLossRate = (double) lostPackets / sentPackets * 100;
-                System.out.println("Packet loss rate: " + packetLossRate + "%");
+                if(sentPackets!=0){
+                    double packetLossRate = (double) lostPackets / sentPackets * 100;
+                    System.out.println("Packet loss rate: " + packetLossRate + "%");
+                }
+
 
             }
             catch (SocketTimeoutException e) {
@@ -56,7 +58,6 @@ public abstract class UDPHandler extends Thread {
                 lostPackets++;
             }catch (Exception ignored) {
                 System.out.println("not be able to catch message ");
-                System.out.println(ignored.getMessage());
                 lostPackets++;
             }
             sentPackets++;
@@ -82,6 +83,7 @@ public abstract class UDPHandler extends Thread {
         else{
             System.out.println("The Bank loses "+ (-difference)+"$ than last time");
         }
+        System.out.println("Banks current value: "+ this.bank.getCurrentValue());
         return reply(address, port);
 
 

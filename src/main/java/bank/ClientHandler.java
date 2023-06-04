@@ -90,6 +90,7 @@ public class ClientHandler extends Thread {
     else if(transactionType.equals("lendMoney")){
       if(bank.getCurrentValue() < money){
         this.statusMessage= DENY_ANSWER;
+        bank.setCurrentValue(bank.getCurrentValue()-money);
         sendAnswer("Exceed amount of money");
       }
       else {
@@ -187,7 +188,6 @@ public class ClientHandler extends Thread {
         + "Content-Type: text/plain\r\n"
         + "Content-Length: "+ msg.length() +" \r\n\r\n"
         +msg;
-    System.out.println(http);
     writer.write(http.getBytes());
   }
   private String getContentType(String data) {
@@ -216,7 +216,6 @@ public class ClientHandler extends Thread {
           + "Content-Type: text/plain\r\n"
           + "Content-Length: "+ String.valueOf(bank.getCurrentValue()).length()+ " \r\n\r\n"
           + bank.getCurrentValue();
-      System.out.println(http);
       out.write(http.getBytes());
       out.flush();
       this.checkRequest= true;

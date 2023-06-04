@@ -17,7 +17,8 @@ public class Main {
             pos++;
         }
 
+
         Borse borse= new Borse(args[args.length-1],handlers);
-        borse.startPullingData(3000);
+        borse.startPullingData(10000);
     }
 }
