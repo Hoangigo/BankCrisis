@@ -26,6 +26,8 @@ services:
     environment:
       - RPCBANKS=bank2:3001,bank3:3002
       - RPCPORT=3000
+    depends_on:
+      - broker
 
     entrypoint: ["java", "-jar", "app.jar", "bank1","1234","8080"]
   bank2:
@@ -40,6 +42,8 @@ services:
     environment:
       - RPCBANKS=bank1:3000,bank3:3002
       - RPCPORT=3001
+    depends_on:
+      - broker
     entrypoint: [ "java", "-jar", "app.jar","bank2","1235","8081"]
   bank3:
     build:
@@ -53,4 +57,19 @@ services:
     environment:
       - RPCBANKS=bank1:3000,bank2:3001
       - RPCPORT=3002
+    depends_on:
+      - broker
     entrypoint: [ "java", "-jar", "app.jar","bank3","1236","8082"]
+  broker:
+    build:
+      context: .
+      dockerfile: src/main/mqtt/Dockerfile
+    container_name: 'broker'
+
+  coordinator:
+    build:
+      context: .
+      dockerfile: src/main/java/coordinator/Dockerfile
+    container_name: 'coordinator'
+    entrypoint: [ "java", "-jar", "app.jar" ]
+
