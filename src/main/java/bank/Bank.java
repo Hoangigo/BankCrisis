@@ -33,6 +33,8 @@ import udphandler.UDPMessage;
 public class Bank extends Thread implements Establisher {
     private static final String PREPARE_TOPIC = "prepare";
     private static final String COMMIT_TOPIC = "commit";
+    private static final String FINISH_TOPIC = "finish";
+
     private final UDPHandler handler;
     private final String bankName;
     private int currentValue;
@@ -51,7 +53,6 @@ public class Bank extends Thread implements Establisher {
     private int respones;
     private int bankSize;
     private boolean check;
-    private int receivedFinishTopics;
 
     public Bank(String name, int port, int httpPort) throws IOException {
         this.HTTP_DEFAULT_PORT = httpPort;
@@ -67,7 +68,6 @@ public class Bank extends Thread implements Establisher {
         respones=0;
         check=true;
         bankSize=3;
-        receivedFinishTopics = 0;
         String bankRPCs = System.getenv("RPCBANKS");
         if (bankRPCs != null) {
             rpcAdress= new HashMap<>();
@@ -98,6 +98,8 @@ public class Bank extends Thread implements Establisher {
         client = createClient("broker",1883);
         client.subscribe(PREPARE_TOPIC);
         client.subscribe(COMMIT_TOPIC);
+        client.subscribe(FINISH_TOPIC);
+
         client.setCallback(new MqttCallback() {
             @Override
             public void connectionLost(Throwable throwable) {
@@ -112,6 +114,9 @@ public class Bank extends Thread implements Establisher {
                 } else if (topic.equals(COMMIT_TOPIC)) {
                     handleCommitMessage(mqttMessage);
                 }
+                else if (topic.equals(FINISH_TOPIC)) {
+                    handleFinishMessage(mqttMessage);
+                }
             }
 
             @Override
@@ -121,31 +126,28 @@ public class Bank extends Thread implements Establisher {
             }
         });
     }
+        private void handleFinishMessage(MqttMessage mqttMessage) {
+            String name =  new String(mqttMessage.getPayload());            
+            if(!name.equals(bankName)){
+                this.setCurrentValue(this.getCurrentValue()-this.amount);
+                System.out.println("Current value: "+ this.getCurrentValue());
+            }
+          
+            }
 
     private void handlePrepareMessage(MqttMessage mqttMessage) {
         String split[] = new String(mqttMessage.getPayload()).split(";");
         String name = split[0];
         String money = split[1];
-        String check = split[2];
         if(!name.equals(bankName)){
-            if(check.equals("first")){
-                this.amount= Integer.parseInt(money);
-                sendMQTTMessage(COMMIT_TOPIC, name +";"+(amount< this.getCurrentValue()?"true":"false"));
-            }
-            else if(check.equals("last")){
-                System.out.println("Last case");
-                this.setCurrentValue(this.getCurrentValue()-this.amount);
-            }
-            else{
-                System.out.println("UNEXPECTED CASE");
-            }
-            System.out.println("Client is living?:"+ client.isConnected());
-            
+            this.amount= Integer.parseInt(money)/2;
+            sendMQTTMessage(COMMIT_TOPIC, name +";"+(amount< this.getCurrentValue()?"true":"false"));
+        /*  this.setCurrentValue(this.getCurrentValue()-this.amount);
+            System.out.println("Current value: "+ this.getCurrentValue());*/  
         }
     }
 
     private void handleCommitMessage(MqttMessage mqttMessage) {
-        System.out.println("Receive Commit Message");
         String split[] = new String(mqttMessage.getPayload()).split(";");
         String name = split[0];
         String vote = split[1];
@@ -154,7 +156,7 @@ public class Bank extends Thread implements Establisher {
             System.out.println(respones);
             if(vote.equals("false")) check = false;
             if(respones== bankSize-1&& check){
-                sendMQTTMessage(PREPARE_TOPIC, name+";1000;last");
+                sendMQTTMessage(FINISH_TOPIC, name);
                 respones=0;
             }
         
@@ -203,16 +205,16 @@ public class Bank extends Thread implements Establisher {
         try {
             while (running) {
                 if(this.getCurrentValue()<0){
-                    askForHelp();
-                    if(isBankrupt()){
+                    //askForHelp();
+                    //if(isBankrupt()){
                         System.out.println("BANKRUPT!!!!!!!!!!");
-                        sendMQTTMessage(PREPARE_TOPIC,this.bankName+";1000;first");
+                        String amount = String.valueOf(this.getCurrentValue());
+                        sendMQTTMessage(PREPARE_TOPIC,this.bankName+";"+amount);
                         //running= false;
-                        //break;
-                    }
-                    else {
-                        System.out.println("RESCUE !!!!!!!!!");
-                    }
+                    //}
+                    //else {
+                        //System.out.println("RESCUE !!!!!!!!!");
+                    //}
                 }
                 Socket client = serverSocket.accept();
                 this.clientHandler = new ClientHandler(client, this);
