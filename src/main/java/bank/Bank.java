@@ -11,22 +11,15 @@ import java.net.UnknownHostException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
-import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TProtocol;
-import org.apache.thrift.server.TServer;
-import org.apache.thrift.server.TSimpleServer;
-import org.apache.thrift.transport.TServerSocket;
-import org.apache.thrift.transport.TServerTransport;
 import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransport;
-import org.apache.thrift.transport.TTransportException;
 import org.eclipse.paho.client.mqttv3.IMqttDeliveryToken;
 import org.eclipse.paho.client.mqttv3.MqttCallback;
 import org.eclipse.paho.client.mqttv3.MqttClient;
 import org.eclipse.paho.client.mqttv3.MqttException;
 import org.eclipse.paho.client.mqttv3.MqttMessage;
-import thrift.BankService;
 import thrift.BankService.Client;
 import thrift.LoanRequest;
 import thrift.LoanResponse;
@@ -55,6 +48,10 @@ public class Bank extends Thread implements Establisher {
     private RPCHelper rpc;
     private int amount;
     private MqttClient client;
+    private int respones;
+    private int bankSize;
+    private boolean check;
+    private int receivedFinishTopics;
 
     public Bank(String name, int port, int httpPort) throws IOException {
         this.HTTP_DEFAULT_PORT = httpPort;
@@ -67,6 +64,10 @@ public class Bank extends Thread implements Establisher {
         this.bankrupt = false;
         rpc = new RPCHelper(this);
         amount=0;
+        respones=0;
+        check=true;
+        bankSize=3;
+        receivedFinishTopics = 0;
         String bankRPCs = System.getenv("RPCBANKS");
         if (bankRPCs != null) {
             rpcAdress= new HashMap<>();
@@ -82,6 +83,7 @@ public class Bank extends Thread implements Establisher {
             connectMQTT();
         }
         catch (MqttException e) {
+            System.out.println("MQTT Exception");
             throw new RuntimeException(e);
         }
         this.handler = new UDPHandler(this) {
@@ -94,7 +96,8 @@ public class Bank extends Thread implements Establisher {
     }
     private void connectMQTT() throws MqttException {
         client = createClient("broker",1883);
-        client.subscribe("topic");
+        client.subscribe(PREPARE_TOPIC);
+        client.subscribe(COMMIT_TOPIC);
         client.setCallback(new MqttCallback() {
             @Override
             public void connectionLost(Throwable throwable) {
@@ -103,6 +106,7 @@ public class Bank extends Thread implements Establisher {
 
             @Override
             public void messageArrived(String topic, MqttMessage mqttMessage) throws Exception {
+                System.out.println("TOPIC:"+ topic);
                 if (topic.equals(PREPARE_TOPIC)) {
                     handlePrepareMessage(mqttMessage);
                 } else if (topic.equals(COMMIT_TOPIC)) {
@@ -113,36 +117,47 @@ public class Bank extends Thread implements Establisher {
             @Override
             public void deliveryComplete(IMqttDeliveryToken iMqttDeliveryToken) {
 
+
             }
         });
     }
-
 
     private void handlePrepareMessage(MqttMessage mqttMessage) {
         String split[] = new String(mqttMessage.getPayload()).split(";");
         String name = split[0];
         String money = split[1];
+        String check = split[2];
         if(!name.equals(bankName)){
-            System.out.println(bankName);
-            System.out.println("amount of money"+ money );
-            int amount = Integer.parseInt(money);
-            this.amount= amount;
-            sendMQTTMessage("prepare", name +";"+(amount< this.getCurrentValue()?"true":"false"));
+            if(check.equals("first")){
+                this.amount= Integer.parseInt(money);
+                sendMQTTMessage(COMMIT_TOPIC, name +";"+(amount< this.getCurrentValue()?"true":"false"));
+            }
+            else if(check.equals("last")){
+                System.out.println("Last case");
+                this.setCurrentValue(this.getCurrentValue()-this.amount);
+            }
+            else{
+                System.out.println("UNEXPECTED CASE");
+            }
+            System.out.println("Client is living?:"+ client.isConnected());
+            
         }
     }
 
     private void handleCommitMessage(MqttMessage mqttMessage) {
-        String commitRequest = new String(mqttMessage.getPayload());
-        if(!commitRequest.equals(bankName)){
-            if(commitRequest.equals("abort")){
-                System.out.println("abort");
+        System.out.println("Receive Commit Message");
+        String split[] = new String(mqttMessage.getPayload()).split(";");
+        String name = split[0];
+        String vote = split[1];
+        if(name.equals(bankName)){
+            respones++;
+            System.out.println(respones);
+            if(vote.equals("false")) check = false;
+            if(respones== bankSize-1&& check){
+                sendMQTTMessage(PREPARE_TOPIC, name+";1000;last");
+                respones=0;
             }
-            else{
-                this.setCurrentValue(this.getCurrentValue()-amount);
-                System.out.println("new value of bank"+ this.getCurrentValue());
-                this.amount=0;
-                sendMQTTMessage("commit", bankName);
-            }
+        
         }
     }
 
@@ -184,15 +199,16 @@ public class Bank extends Thread implements Establisher {
     public void run() {
         handler.start();
         rpc.start();
-        System.out.println("Bank1 send mqtt");
-        sendMQTTMessage("help",this.bankName+";1000");
+       
         try {
             while (running) {
                 if(this.getCurrentValue()<0){
                     askForHelp();
                     if(isBankrupt()){
                         System.out.println("BANKRUPT!!!!!!!!!!");
-                        running = false;
+                        sendMQTTMessage(PREPARE_TOPIC,this.bankName+";1000;first");
+                        //running= false;
+                        //break;
                     }
                     else {
                         System.out.println("RESCUE !!!!!!!!!");
@@ -209,18 +225,21 @@ public class Bank extends Thread implements Establisher {
 
     }
     private void sendMQTTMessage(String topic, String mess){
-        System.out.println("Send mqtt from Bank with message "+ mess +"with topic "+ topic );
+        System.out.println("Send mqtt from Bank with message "+ mess +" with topic "+ topic );
         try {
             MqttMessage msg = new MqttMessage();
             msg.setPayload(mess.getBytes());
-            msg.setQos(0);
+            msg.setQos(2);
             msg.setRetained(true);
             client.publish(topic,msg);
+
         } catch (MqttException ignore) {
+            ignore.printStackTrace();
         }
     }
 
     private void askForHelp() {
+        boolean allDenied = true;
         System.out.println("SENDING HELPING REQUEST");
         for (Map.Entry<String, Integer> entry : rpcAdress.entrySet()) {
             String hostRpc = entry.getKey();
@@ -232,27 +251,34 @@ public class Bank extends Thread implements Establisher {
                 TProtocol protocol = new TBinaryProtocol(transport);
                 Client client = new Client(protocol);
                 Double value = Double.valueOf(-this.getCurrentValue());
+                long startTime = System.nanoTime();
                 LoanRequest request = new LoanRequest(value);
                 LoanResponse response = client.requestLoan(request);
+                long endTime = System.nanoTime();
+                long rtt = endTime - startTime;
+                System.out.println("RTT: " + rtt + " nanoseconds");
                 System.out.println("Response: "+ response);
                 if(response.equals(LoanResponse.APPROVED)){
                     System.out.println(hostRpc+ " success to rescue");
-                    this.setCurrentValue(10000);
+                    this.setCurrentValue(0);
+                    allDenied = false;
+
                     break;
                 }
                 else if(response.equals(LoanResponse.DENIED)){
                     System.out.println(hostRpc+" fail to rescue");
-                    setBankrupt(true);
                 }
                 else {
                     System.out.println("Else case: "+ response);
                 }
             }
             catch (Exception e){
-                System.out.println("Error");
                 e.printStackTrace();
             }
 
+        }
+        if(allDenied){
+            setBankrupt(true);
         }
 
     }

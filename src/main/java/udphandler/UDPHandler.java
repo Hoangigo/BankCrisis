@@ -42,7 +42,7 @@ public abstract class UDPHandler extends Thread {
         while (running) {
             buffer = new byte[BUFFER_SIZE];
             request = new DatagramPacket(buffer,BUFFER_SIZE);
-            if(bank.isBankrupt()) running = false;
+            if(bank.isBankrupt()) break;
             try {
                 receiver.receive(request);
                 receiver.send(evaluateData(request.getData(), request.getLength(), request.getAddress(), request.getPort()));
