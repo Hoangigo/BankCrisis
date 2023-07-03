@@ -1,4 +1,4 @@
-FROM maven:latest as builder
+FROM maven:3.8.1-openjdk-17-slim as builder
 WORKDIR /app
 COPY pom.xml /app
 COPY src/main/java/connection /app/src/main/java/connection

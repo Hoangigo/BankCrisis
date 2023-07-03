@@ -40,6 +40,8 @@ public class Bank extends Thread implements Establisher {
     private int currentValue;
     private int HTTP_DEFAULT_PORT;
     private int port;
+    private Map<String, Long> startTimes; // Add this line
+
 
     private ClientHandler clientHandler;
     private final ServerSocket serverSocket;
@@ -55,6 +57,8 @@ public class Bank extends Thread implements Establisher {
     private boolean check;
 
     public Bank(String name, int port, int httpPort) throws IOException {
+        this.startTimes = new HashMap<>(); // Add this line
+
         this.HTTP_DEFAULT_PORT = httpPort;
         this.bankName = name;
         this.currentValue = 0;
@@ -131,6 +135,14 @@ public class Bank extends Thread implements Establisher {
             if(!name.equals(bankName)){
                 this.setCurrentValue(this.getCurrentValue()-this.amount);
                 System.out.println("Current value: "+ this.getCurrentValue());
+                   // Get the start time for the current bank
+            long startTime = startTimes.getOrDefault(name, 0L);
+            
+            // Calculate the elapsed time
+            long endTime = System.nanoTime();
+            long elapsedTime = endTime - startTime;
+            
+            System.out.println("Elapsed time: " + (elapsedTime ) + " s");
             }
           
             }
@@ -140,6 +152,7 @@ public class Bank extends Thread implements Establisher {
         String name = split[0];
         String money = split[1];
         if(!name.equals(bankName)){
+            startTimes.put(name, System.nanoTime());
             this.amount= Integer.parseInt(money)/2;
             sendMQTTMessage(COMMIT_TOPIC, name +";"+(amount< this.getCurrentValue()?"true":"false"));
         /*  this.setCurrentValue(this.getCurrentValue()-this.amount);
@@ -208,6 +221,7 @@ public class Bank extends Thread implements Establisher {
                     //askForHelp();
                     //if(isBankrupt()){
                         System.out.println("BANKRUPT!!!!!!!!!!");
+;
                         String amount = String.valueOf(this.getCurrentValue());
                         sendMQTTMessage(PREPARE_TOPIC,this.bankName+";"+amount);
                         //running= false;

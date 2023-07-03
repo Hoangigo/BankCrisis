@@ -14,7 +14,7 @@ public class Borse  {
     /**
      * Holds all sensorHandlers of the gateway
      * which provide an interface for fetching
-     * data from sensors.
+     * data from sensor
      */
     private final BankHandler[] handlers;
 
